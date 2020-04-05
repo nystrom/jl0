@@ -1,4 +1,21 @@
-# Starter code for JL0 interpreter
+# Implementing an interpreter for JL0
+
+In this assignment, you will implement an interpreter for a small subset of Julia, called JL0.
+
+The interpreter is implemented as a translation from Julia expressions into abstract syntax trees
+and then into a simple bytecode, which is evaluated using an operand stack.
+
+## Getting started
+
+Install Julia: `http://julialang.org`.
+
+Run `julia main.jl` to get the JL0 REPL.
+
+If you type an expression in the REPL, you should see some information on how it is parsed,
+how it is lowered, and how it is evaluated on the stack machine.
+The final thing it prints is the result.
+
+You can type `:q` into the REPL to quit.
 
 ## Language description
 
@@ -7,7 +24,7 @@ JL0 is a small subset of Julia.
 It has the following features:
 
 - integer arithmetic, including constants, `+`, `-`, `*`, and `/`
-- booleans, including constants, `&&, `||`, and `!`
+- booleans, including constants, `&&`, `||`, and `!`
 - variables and assignment
 - `if` expressions (and also conditional `?:` expressions)
 - `while` expressions
