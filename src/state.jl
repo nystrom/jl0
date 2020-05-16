@@ -3,7 +3,7 @@
 
 Call stack frame
 """
-mutable struct Frame
+@auto_hash_equals mutable struct Frame
     # operand stack for the current function
     stack::Vector{Value} 
 
@@ -13,15 +13,21 @@ mutable struct Frame
     return_address::Int
 end
 
-# A heap object is just a dictionary.
-const Object = Dict{Symbol, Value}
+"""
+    struct Object
+
+A heap object.
+"""
+@auto_hash_equals mutable struct Object
+    fields::Dict{Symbol, Value}
+end
 
 """
     struct State
 
 Interpreter state: program counter, operand stack, variables map, and labels map.
 """
-mutable struct State
+@auto_hash_equals mutable struct State
     # program counter
     pc::Int
 

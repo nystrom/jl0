@@ -1,7 +1,6 @@
-function parse(x::AbstractString)::Union{Exp,Func,Nothing}
+function parse(x::AbstractString)::Union{Exp, Func, Struct, Nothing}
     try
         expr = Base.parse_input_line(x)
-        println(expr)
         if expr isa Expr || expr isa Symbol
             return parse(expr)
         else
@@ -12,7 +11,7 @@ function parse(x::AbstractString)::Union{Exp,Func,Nothing}
     end
 end
 
-function parse(x::Symbol)::Union{Exp,Nothing}
+function parse(x::Symbol)::Union{Exp, Nothing}
     if x == :true
         return Lit(1)
     elseif x == :false
@@ -22,20 +21,20 @@ function parse(x::Symbol)::Union{Exp,Nothing}
     end
 end
 
-function parse(x::Int)::Union{Exp,Nothing}
+function parse(x::Int)::Union{Exp, Nothing}
     return Lit(x)
 end
 
-function parse(x::Bool)::Union{Exp,Nothing}
+function parse(x::Bool)::Union{Exp, Nothing}
     return Lit(x)
 end
 
-function parse(e)::Union{Exp,Nothing}
+function parse(e)::Union{Exp, Nothing}
     @error("syntax error: unexpected expression $e")
     return nothing
 end
 
-function parse(e::Expr)::Union{Exp,Func,Nothing}
+function parse(e::Expr)::Union{Exp, Func, Struct, Nothing}
     if e.head == :toplevel
         args = filter(x -> !(x isa LineNumberNode), e.args)
         if length(args) == 1
@@ -43,6 +42,10 @@ function parse(e::Expr)::Union{Exp,Func,Nothing}
         else
             return Block(map(parse, args))
         end
+    elseif e.head == :struct
+        dict = MacroTools.splitstructdef(e)
+        fieldnames = map(x -> x[1], dict[:fields])
+        return Struct(dict[:name], fieldnames)
     elseif e.head == :function
         dict = MacroTools.splitdef(e)
         argnames = map(x -> x[1], map(MacroTools.splitarg, dict[:args]))
@@ -56,6 +59,8 @@ function parse(e::Expr)::Union{Exp,Func,Nothing}
             return If(parse(e.args[2]), Lit(false), Lit(true))
         elseif length(e.args) == 2 && e.args[1] == :-
             return Bin(:-, Lit(0), e.args[2])
+        elseif e.args[1] isa Symbol && isuppercase(string(e.args[1])[1])
+            return New(e.args[1], map(parse, e.args[2:end]))
         elseif e.args[1] isa Symbol
             return Call(e.args[1], map(parse, e.args[2:end]))
         else
@@ -76,8 +81,18 @@ function parse(e::Expr)::Union{Exp,Func,Nothing}
         else
             return Block(map(parse, args))
         end
-    elseif e.head == :(=) && e.args[1] isa Symbol && length(e.args) == 2
-        return Assign(e.args[1], parse(e.args[2]))
+    elseif e.head == :(=)
+        left = parse(e.args[1])
+        right = parse(e.args[2])
+        if left isa Var
+            return Assign(left.name, right)
+        elseif left isa GetField
+            return SetField(left.target, left.field, right)
+        else
+            @error("syntax: unexpected expression $e")
+        end
+    elseif e.head == :. && e.args[2] isa QuoteNode && e.args[2].value isa Symbol
+        return GetField(parse(e.args[1]), e.args[2].value)
     elseif e.head == :return && length(e.args) == 1
         return Return(e.args[1])
     else

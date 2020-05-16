@@ -11,6 +11,10 @@ function lower(func::Func)::FUNC
     FUNC(func.fname, func.params, insns)
 end
 
+function lower(s::Struct)::STRUCT
+    STRUCT(s.name, s.fields)
+end
+
 """
     lower(e::Exp)
 
@@ -44,6 +48,30 @@ function lower(e::Return)::Vector{Insn}
     insns = Insn[]
     append!(insns, lower(e.exp))
     push!(insns, RET())
+    insns
+end
+
+function lower(e::New)::Vector{Insn}
+    insns = Insn[]
+    for x in e.fields
+        append!(insns, lower(x))
+    end
+    push!(insns, NEW(e.name))
+    insns
+end
+
+function lower(e::GetField)::Vector{Insn}
+    insns = Insn[]
+    append!(insns, lower(e.target))
+    push!(insns, GET(e.field))
+    insns
+end
+
+function lower(e::SetField)::Vector{Insn}
+    insns = Insn[]
+    append!(insns, lower(e.target))
+    append!(insns, lower(e.value))
+    push!(insns, PUT(e.field))
     insns
 end
 

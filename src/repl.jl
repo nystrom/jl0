@@ -6,8 +6,11 @@ function repl()
     println("Welcome to JL0. Enter expressionx and watch them get evaluated! Type `:q` to quit.")
     prompt()
 
-    vars = Dict{Symbol,Int}()
-    funcs = Dict{Symbol,FUNC}()
+    state = State()
+
+    # Push a frame for the main function. This is the frame for the top-level expression.
+    # We need this frame to keep track of the variables.
+    push!(state.frames, Frame(Value[], Dict{Symbol, Value}(), 0))
 
     while !eof(stdin)
         line = readline()
@@ -15,6 +18,30 @@ function repl()
         if line == ":q" || line == ":quit"
             println("Bye!")
             break
+        end
+
+        if line == ":heap"
+            for (i, v) in enumerate(state.heap)
+                println("$i -> $v")
+            end
+            prompt()
+            continue
+        end
+
+        if line == ":vars"
+            for (x, v) in current_frame(state).vars
+                println("$x = $v")
+            end
+            prompt()
+            continue
+        end
+
+        if line == ":insns"
+            for insn in state.insns
+                println(insn)
+            end
+            prompt()
+            continue
         end
 
         if line == ""
@@ -31,18 +58,29 @@ function repl()
             println("syntax error")
         elseif e isa Func
             f = lower(e)
-            funcs[f.fname] = f
+            state.funcs[f.fname] = f
+            append_insns!(state, f.body)
+        elseif e isa Struct
+            s = lower(e)
+            state.structs[s.name] = s
         elseif e isa Exp
-            insns = lower(e)
+            label = gensym()
+
+            insns = Insn[]
+            push!(insns, LABEL(label))
+            append!(insns, lower(e))
             push!(insns, STOP())
-            println("lowered $insns")
 
-            result = eval(insns, funcs, vars)
+            append_insns!(state, insns)
 
-            if result != nothing
-                (v, vars) = result
-                println(v)
-            end
+            println("lowered $(state.insns)")
+
+            # Clear the stack for the next run.
+            current_frame(state).stack = Value[]
+
+            result = eval(label, state)
+
+            println(result)
         end
 
         prompt()

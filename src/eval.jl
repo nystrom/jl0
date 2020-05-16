@@ -1,71 +1,5 @@
-"""
-    struct Frame
-
-Call stack frame
-"""
-mutable struct Frame
-    # operand stack for the current function
-    stack::Vector{Int} 
-
-    # local variable store for the current function
-    vars::Dict{Symbol,Int}
-
-    return_address::Int
-end
-
-"""
-    struct State
-
-Interpreter state: program counter, operand stack, variables map, and labels map.
-"""
-mutable struct State
-    # program counter
-    pc::Int
-
-    # instruction array
-    insns::Vector{Insn}
-
-    # map from label names to instruction index
-    labels::Dict{Symbol,Int}
-
-    # call stack 
-    frames::Vector{Frame}
-
-    # global function store
-    funcs::Dict{Symbol,FUNC}
-
-    function State(insns, labels, funcs)
-        new(1,
-            insns,
-            labels,
-            Frame[],
-            funcs,
-        )
-    end
-end
-
-function current_frame(state)
-    last(state.frames)
-end
-
-function eval(insns::Vector{Insn}, funcs::Dict{Symbol,FUNC}, vars::Dict{Symbol,Int}; debug=false)::Union{Nothing,Tuple{Int,Dict{Symbol,Int}}}
-    for (label, func) in funcs
-        append!(insns, func.body)
-    end
-
-    labels = Dict{Symbol,Int}()
-
-    # Set up the jump labels.
-    for (i, insn) in enumerate(insns)
-        if insn isa LABEL
-            labels[insn.label] = i
-        end
-    end
-
-    state = State(insns, labels, funcs)
-
-    # Push a frame for the main function. This is the frame for the top-level expression.
-    push!(state.frames, Frame(Int[], copy(vars), 0))
+function eval(label::Symbol, state::State; debug=false)::Value
+    state.pc = state.labels[label]
 
     while 1 <= state.pc && state.pc <= length(state.insns)
         debug && println(state)
@@ -86,14 +20,14 @@ function eval(insns::Vector{Insn}, funcs::Dict{Symbol,FUNC}, vars::Dict{Symbol,I
 
     @assert !isempty(frame.stack)
 
-    return (frame.stack[end], frame.vars)
+    return frame.stack[end]
 end
 
 function eval_insn(insn::CALL, state::State)
     caller_frame = current_frame(state)
 
     func = state.funcs[insn.fname]
-    args = Dict{Symbol, Int}()
+    args = Dict{Symbol, Value}()
 
     # pop the arugments
     for x in func.params
@@ -102,7 +36,7 @@ function eval_insn(insn::CALL, state::State)
     end
 
     # push a new stack frame
-    push!(state.frames, Frame(Int[], args, state.pc+1))
+    push!(state.frames, Frame(Value[], args, state.pc+1))
 
     # jump to the function entry
     state.pc = state.labels[insn.fname]
@@ -123,6 +57,44 @@ end
 
 function eval_insn(insn::STOP, state::State)
     state.pc = 0
+end
+
+function eval_insn(insn::NEW, state::State)
+    frame = current_frame(state)
+    s = state.structs[insn.structname]
+
+    # allocate a new object and add it to the heap
+    h = length(state.heap) + 1
+    o = Object(Dict{Symbol, Value}())
+    push!(state.heap, o)
+
+    # pop and store the fields in the struct
+    for x in reverse(s.fields)
+        v = pop!(frame.stack)
+        o[x] = v
+    end
+
+    # push the new object's address
+    push!(frame.stack, LOC(h))
+    state.pc += 1
+end
+
+function eval_insn(insn::GET, state::State)
+    frame = current_frame(state)
+    h = pop!(frame.stack)
+    o = state.heap[h.value]
+    push!(frame.stack, o.fields[insn.field])
+    state.pc += 1
+end
+
+function eval_insn(insn::PUT, state::State)
+    frame = current_frame(state)
+    v = pop!(frame.stack)
+    h = pop!(frame.stack)
+    o = state.heap[h.value]
+    o.fields[insn.field] = v
+    push!(frame.stack, v)
+    state.pc += 1
 end
 
 function eval_insn(insn::JMP, state::State)
@@ -207,36 +179,41 @@ function eval_insn(insn::ST, frame::Frame)
 end
 
 function eval_insn(insn::LDC, frame::Frame)
-    push!(frame.stack, insn.value)
+    push!(frame.stack, INT(insn.value))
 end
 
 function eval_insn(insn::ADD, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
-    push!(frame.stack, x+y)
+    push!(frame.stack, INT(x.value+y.value))
 end
 
 function eval_insn(insn::SUB, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
-    push!(frame.stack, x-y)
+    push!(frame.stack, INT(x.value-y.value))
 end
 
 function eval_insn(insn::MUL, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
-    push!(frame.stack, x*y)
+    push!(frame.stack, INT(x.value*y.value))
 end
 
 function eval_insn(insn::DIV, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
-    push!(frame.stack, div(x, y))
+    push!(frame.stack, INT(div(x.value, y.value)))
 end
 
 function eval_insn(insn::PRINT, frame::Frame)
     v = pop!(frame.stack)
-    println(v)
+    if v isa INT
+        println(v.value)
+    elseif v isa LOC
+        o = state.heap[v.value]
+        println(o)
+    end
 end
 
 function eval_insn(insn::POP, frame::Frame)
