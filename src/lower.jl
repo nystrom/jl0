@@ -28,6 +28,10 @@ function lower(e)
     @error("lower undefined for $e")
 end
 
+function lower(e::LitNothing)::Vector{Insn}
+    Insn[NULL()]
+end
+
 function lower(e::Lit)::Vector{Insn}
     # Push the constant on the stack. Convert to an integer first.
     Insn[LDC(Int(e.value))]
@@ -157,10 +161,14 @@ function lower(e::If)::Vector{Insn}
         l = lower(e.cond.e1)
         r = lower(e.cond.e2)
 
+        sub = SUB()
+
         if e.cond.op == :(==)
             jump = JNE(f_label)
+            sub = CMP()
         elseif e.cond.op == :(!=)
             jump = JEQ(f_label)
+            sub = CMP()
         elseif e.cond.op == :(<)
             jump = JGE(f_label)
         elseif e.cond.op == :(>)
@@ -175,7 +183,7 @@ function lower(e::If)::Vector{Insn}
 
         vcat(l,
              r,
-             Insn[SUB(), jump],
+             Insn[sub, jump],
              t,
              Insn[JMP(j_label), LABEL(f_label)],
              f,
@@ -214,10 +222,14 @@ function lower(e::While)::Vector{Insn}
         l = lower(e.cond.e1)
         r = lower(e.cond.e2)
 
+        sub = SUB()
+
         if e.cond.op == :(==)
             jump = JEQ(top_label)
+            sub = CMP()
         elseif e.cond.op == :(!=)
             jump = JNE(top_label)
+            sub = CMP()
         elseif e.cond.op == :(<)
             jump = JLT(top_label)
         elseif e.cond.op == :(>)
@@ -235,7 +247,7 @@ function lower(e::While)::Vector{Insn}
              Insn[POP(), LABEL(bot_label)],
              l,
              r,
-             Insn[SUB(), jump],
+             Insn[sub, jump],
             )
     elseif e.cond isa Lit && !(e.cond.value == false || e.cond.value == 0)
         # while true. There's no need to track the iteration count.

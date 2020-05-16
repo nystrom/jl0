@@ -5,6 +5,8 @@ abstract type Exp end
     value::Int
 end
 
+struct LitNothing <: Exp end
+
 # Binary operator. Op should be one of :+, :-, :*, :/
 @auto_hash_equals struct Bin <: Exp
     op::Symbol

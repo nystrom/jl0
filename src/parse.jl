@@ -17,6 +17,8 @@ function parse(x::Symbol)::Union{Exp, Nothing}
         return Lit(1)
     elseif x == :false
         return Lit(0)
+    elseif x == :nothing
+        return LitNothing()
     else
         return Var(x)
     end

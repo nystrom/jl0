@@ -127,7 +127,8 @@ end
 function eval_insn(insn::JEQ, state::State)
     frame = current_frame(state)
     v = pop!(frame.stack)
-    if v == 0
+    v isa INT || @error("JEQ requires an INT")
+    if v.value == 0
         state.pc = state.labels[insn.label]
     else
         state.pc += 1
@@ -137,7 +138,8 @@ end
 function eval_insn(insn::JNE, state::State)
     frame = current_frame(state)
     v = pop!(frame.stack)
-    if v != 0
+    v isa INT || @error("JNE requires an INT")
+    if v.value != 0
         state.pc = state.labels[insn.label]
     else
         state.pc += 1
@@ -147,7 +149,8 @@ end
 function eval_insn(insn::JLT, state::State)
     frame = current_frame(state)
     v = pop!(frame.stack)
-    if v < 0
+    v isa INT || @error("JLT requires an INT")
+    if v.value < 0
         state.pc = state.labels[insn.label]
     else
         state.pc += 1
@@ -157,7 +160,8 @@ end
 function eval_insn(insn::JGT, state::State)
     frame = current_frame(state)
     v = pop!(frame.stack)
-    if v > 0
+    v isa INT || @error("JGT requires an INT")
+    if v.value > 0
         state.pc = state.labels[insn.label]
     else
         state.pc += 1
@@ -167,7 +171,8 @@ end
 function eval_insn(insn::JLE, state::State)
     frame = current_frame(state)
     v = pop!(frame.stack)
-    if v <= 0
+    v isa INT || @error("JLE requires an INT")
+    if v.value <= 0
         state.pc = state.labels[insn.label]
     else
         state.pc += 1
@@ -177,7 +182,8 @@ end
 function eval_insn(insn::JGE, state::State)
     frame = current_frame(state)
     v = pop!(frame.stack)
-    if v >= 0
+    v isa INT || @error("JGE requires an INT")
+    if v.value >= 0
         state.pc = state.labels[insn.label]
     else
         state.pc += 1
@@ -203,6 +209,20 @@ end
 
 function eval_insn(insn::LDC, frame::Frame)
     push!(frame.stack, INT(insn.value))
+end
+
+function eval_insn(insn::NULL, frame::Frame)
+    push!(frame.stack, LOC(0))
+end
+
+function eval_insn(insn::CMP, frame::Frame)
+    y = pop!(frame.stack)
+    x = pop!(frame.stack)
+    if x == y
+        push!(frame.stack, INT(0))
+    else
+        push!(frame.stack, INT(1))
+    end
 end
 
 function eval_insn(insn::ADD, frame::Frame)

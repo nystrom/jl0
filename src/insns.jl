@@ -69,11 +69,17 @@ end
     value::Int
 end
 
+# Push null
+struct NULL <: Insn end
+
 # Arithmetic operators. Pop two operands and push result.
 struct ADD <: Insn end
 struct SUB <: Insn end
 struct MUL <: Insn end
 struct DIV <: Insn end
+
+# Pushes 0 if top two operands are equal, else 1
+struct CMP <: Insn end
 
 # Pop and print the value on top of the stack
 struct PRINT <: Insn end
