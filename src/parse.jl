@@ -7,6 +7,7 @@ function parse(x::AbstractString)::Union{Exp, Func, Struct, Nothing}
             return nothing
         end
     catch ex
+        @error("parse error")
         return nothing
     end
 end
@@ -29,7 +30,7 @@ function parse(x::Bool)::Union{Exp, Nothing}
     return Lit(x)
 end
 
-function parse(e)::Union{Exp, Nothing}
+function parse(e)
     @error("syntax error: unexpected expression $e")
     return nothing
 end
@@ -66,6 +67,10 @@ function parse(e::Expr)::Union{Exp, Func, Struct, Nothing}
         else
             @error("syntax error: unexpected expression $e")
         end
+    elseif e.head == :&& && length(e.args) >= 1
+        return foldl((x, y) -> If(x, y, Lit(false)), map(parse, e.args[2:end]); init=parse(e.args[1]))
+    elseif e.head == :|| && length(e.args) >= 1
+        return foldl((x, y) -> If(x, Lit(true), y), map(parse, e.args[2:end]); init=parse(e.args[1]))
     elseif e.head == :if
         if length(e.args) == 3
             return If(parse(e.args[1]), parse(e.args[2]), parse(e.args[3]))
@@ -94,7 +99,7 @@ function parse(e::Expr)::Union{Exp, Func, Struct, Nothing}
     elseif e.head == :. && e.args[2] isa QuoteNode && e.args[2].value isa Symbol
         return GetField(parse(e.args[1]), e.args[2].value)
     elseif e.head == :return && length(e.args) == 1
-        return Return(e.args[1])
+        return Return(parse(e.args[1]))
     else
         @error("syntax: unexpected expression $e")
     end

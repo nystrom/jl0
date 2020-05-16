@@ -26,6 +26,8 @@ end
 function eval_insn(insn::CALL, state::State)
     caller_frame = current_frame(state)
 
+    haskey(state.funcs, insn.fname) || @error("function not found $(insn.fname)")
+
     func = state.funcs[insn.fname]
     args = Dict{Symbol, Value}()
 
@@ -43,6 +45,12 @@ function eval_insn(insn::CALL, state::State)
 end
 
 function eval_insn(insn::RET, state::State)
+    if length(state.frames) == 1
+        state.pc = 0
+        @error("cannot return from top-level expression")
+        return
+    end
+
     # pop the callee frame
     callee_frame = pop!(state.frames)
     caller_frame = current_frame(state)
@@ -61,6 +69,9 @@ end
 
 function eval_insn(insn::NEW, state::State)
     frame = current_frame(state)
+
+    haskey(state.structs, insn.structname) || @error("function not found $(insn.structname)")
+
     s = state.structs[insn.structname]
 
     # allocate a new object and add it to the heap
@@ -71,7 +82,7 @@ function eval_insn(insn::NEW, state::State)
     # pop and store the fields in the struct
     for x in reverse(s.fields)
         v = pop!(frame.stack)
-        o[x] = v
+        o.fields[x] = v
     end
 
     # push the new object's address
@@ -82,7 +93,14 @@ end
 function eval_insn(insn::GET, state::State)
     frame = current_frame(state)
     h = pop!(frame.stack)
+
+    h isa LOC || @error("GET requires a LOC")
+    1 <= h.value <= length(state.heap) || @error("invalid heap location")
+
     o = state.heap[h.value]
+
+    haskey(o.fields, insn.field) || @error("invalid field")
+
     push!(frame.stack, o.fields[insn.field])
     state.pc += 1
 end
@@ -91,8 +109,13 @@ function eval_insn(insn::PUT, state::State)
     frame = current_frame(state)
     v = pop!(frame.stack)
     h = pop!(frame.stack)
+
+    h isa LOC || @error("SET requires a LOC")
+    1 <= h.value <= length(state.heap) || @error("invalid heap location")
+
     o = state.heap[h.value]
     o.fields[insn.field] = v
+
     push!(frame.stack, v)
     state.pc += 1
 end
@@ -169,7 +192,7 @@ end
 
 function eval_insn(insn::LD, frame::Frame)
     # variables are initialized to 0
-    v = get(frame.vars, insn.name, 0)
+    v = get(frame.vars, insn.name, INT(0))
     push!(frame.stack, v)
 end
 
@@ -185,24 +208,33 @@ end
 function eval_insn(insn::ADD, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
+    x isa INT || @error("ADD requires an INT")
+    y isa INT || @error("ADD requires an INT")
     push!(frame.stack, INT(x.value+y.value))
 end
 
 function eval_insn(insn::SUB, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
+    x isa INT || @error("SUB requires an INT")
+    y isa INT || @error("SUB requires an INT")
     push!(frame.stack, INT(x.value-y.value))
 end
 
 function eval_insn(insn::MUL, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
+    x isa INT || @error("MUL requires an INT")
+    y isa INT || @error("MUL requires an INT")
     push!(frame.stack, INT(x.value*y.value))
 end
 
 function eval_insn(insn::DIV, frame::Frame)
     y = pop!(frame.stack)
     x = pop!(frame.stack)
+    x isa INT || @error("DIV requires an INT")
+    y isa INT || @error("DIV requires an INT")
+    y != 0 || @error("divide by zero")
     push!(frame.stack, INT(div(x.value, y.value)))
 end
 
@@ -226,5 +258,6 @@ function eval_insn(insn::DUP, frame::Frame)
 end
 
 function eval_insn(insn::LABEL, frame::Frame)
+    # do nothing
 end
 
