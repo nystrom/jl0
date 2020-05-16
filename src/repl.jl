@@ -1,12 +1,13 @@
 function prompt()
-    print("J0> ")
+    print("JL0> ")
 end
 
 function repl()
-    println("Welcome to J0. Enter expressionx and watch them get evaluated! Type `:q` to quit.")
+    println("Welcome to JL0. Enter expressionx and watch them get evaluated! Type `:q` to quit.")
     prompt()
 
     vars = Dict{Symbol,Int}()
+    funcs = Dict{Symbol,FUNC}()
 
     while !eof(stdin)
         line = readline()
@@ -28,13 +29,20 @@ function repl()
 
         if e == nothing
             println("syntax error")
-        else
+        elseif e isa Func
+            f = lower(e)
+            funcs[f.fname] = f
+        elseif e isa Exp
             insns = lower(e)
+            push!(insns, STOP())
             println("lowered $insns")
 
-            (v, vars) = eval(insns, vars)
+            result = eval(insns, funcs, vars)
 
-            v != nothing && println(v)
+            if result != nothing
+                (v, vars) = result
+                println(v)
+            end
         end
 
         prompt()

@@ -1,15 +1,14 @@
-
-function parse(x::AbstractString)::Union{Exp,Nothing}
+function parse(x::AbstractString)::Union{Exp,Func,Nothing}
     try
         expr = Base.parse_input_line(x)
         println(expr)
         if expr isa Expr || expr isa Symbol
-            parse(expr)
+            return parse(expr)
         else
-            nothing
+            return nothing
         end
     catch ex
-        nothing
+        return nothing
     end
 end
 
@@ -36,14 +35,18 @@ function parse(e)::Union{Exp,Nothing}
     return nothing
 end
 
-function parse(e::Expr)::Union{Exp,Nothing}
+function parse(e::Expr)::Union{Exp,Func,Nothing}
     if e.head == :toplevel
         args = filter(x -> !(x isa LineNumberNode), e.args)
         if length(args) == 1
-            parse(args[1])
+            return parse(args[1])
         else
-            Block(map(parse, args))
+            return Block(map(parse, args))
         end
+    elseif e.head == :function
+        dict = MacroTools.splitdef(e)
+        argnames = map(x -> x[1], map(MacroTools.splitarg, dict[:args]))
+        return Func(dict[:name], argnames, parse(dict[:body]))
     elseif e.head == :call
         if length(e.args) > 2 && e.args[1] in [:+, :-, :*, :/, :<, :<=, :>, :>=, :(==), :(!=), :&, :|]
             return foldl((x, y) -> Bin(e.args[1], x, y), map(parse, e.args[3:end]); init=parse(e.args[2]))
@@ -53,6 +56,8 @@ function parse(e::Expr)::Union{Exp,Nothing}
             return If(parse(e.args[2]), Lit(false), Lit(true))
         elseif length(e.args) == 2 && e.args[1] == :-
             return Bin(:-, Lit(0), e.args[2])
+        elseif e.args[1] isa Symbol
+            return Call(e.args[1], map(parse, e.args[2:end]))
         else
             @error("syntax error: unexpected expression $e")
         end
@@ -73,8 +78,9 @@ function parse(e::Expr)::Union{Exp,Nothing}
         end
     elseif e.head == :(=) && e.args[1] isa Symbol && length(e.args) == 2
         return Assign(e.args[1], parse(e.args[2]))
+    elseif e.head == :return && length(e.args) == 1
+        return Return(e.args[1])
     else
-        @error("unexpected expression $e")
-        nothing
+        @error("syntax: unexpected expression $e")
     end
 end

@@ -1,4 +1,17 @@
 """
+    lower(e::Func)
+
+Lower a function definition. This mainly just lowers the function body.
+"""
+function lower(func::Func)::FUNC
+    insns = Insn[]
+    push!(insns, LABEL(func.fname))
+    append!(insns, lower(func.body))
+    push!(insns, RET())
+    FUNC(func.fname, func.params, insns)
+end
+
+"""
     lower(e::Exp)
 
 Return a list of stack instructions to evaluate the expression `e`.
@@ -14,6 +27,24 @@ end
 function lower(e::Lit)::Vector{Insn}
     # Push the constant on the stack. Convert to an integer first.
     Insn[LDC(Int(e.value))]
+end
+
+function lower(e::Call)::Vector{Insn}
+    # Push the arguments.
+    insns = Insn[]
+    for s in e.args
+        append!(insns, lower(s))
+    end
+    # Then call.
+    push!(insns, CALL(e.fname))
+    insns
+end
+
+function lower(e::Return)::Vector{Insn}
+    insns = Insn[]
+    append!(insns, lower(e.exp))
+    push!(insns, RET())
+    insns
 end
 
 function lower(e::Block)::Vector{Insn}

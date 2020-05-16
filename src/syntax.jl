@@ -45,3 +45,21 @@ end
 struct Block <: Exp
     exps::Vector{Exp}
 end
+
+# Function definition
+struct Func <: Exp
+    fname::Symbol
+    params::Vector{Symbol}
+    body::Exp
+end
+
+# Function call
+struct Call <: Exp
+    fname::Symbol
+    args::Vector{Exp}
+end
+
+# Function return
+struct Return <: Exp
+    exp::Exp
+end
