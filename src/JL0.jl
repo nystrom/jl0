@@ -8,6 +8,7 @@ include("parse.jl")
 include("insns.jl")
 include("lower.jl")
 include("state.jl")
+include("heap.jl")
 include("eval.jl")
 include("repl.jl")
 

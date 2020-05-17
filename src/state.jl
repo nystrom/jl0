@@ -1,3 +1,6 @@
+# 64 should be enough for anybody
+const INIT_HEAP_SIZE = 64
+
 """
     struct Frame
 
@@ -11,15 +14,6 @@ Call stack frame
     vars::Dict{Symbol, Value}
 
     return_address::Int
-end
-
-"""
-    struct Object
-
-A heap object.
-"""
-@auto_hash_equals mutable struct Object
-    fields::Dict{Symbol, Value}
 end
 
 """
@@ -40,8 +34,8 @@ Interpreter state: program counter, operand stack, variables map, and labels map
     # call stack 
     frames::Vector{Frame}
 
-    # heap (maps from LOC to Object)
-    heap::Vector{Object}
+    # heap (maps from LOC to Value)
+    heap::Vector{Union{Nothing, Symbol, Value}}
 
     # global function definition store
     funcs::Dict{Symbol, FUNC}
@@ -54,7 +48,7 @@ Interpreter state: program counter, operand stack, variables map, and labels map
             Insn[],
             Dict{Symbol, Int}(),
             Frame[],
-            Object[],
+            fill(nothing, INIT_HEAP_SIZE),
             Dict{Symbol, FUNC}(),
             Dict{Symbol, STRUCT}(),
        )

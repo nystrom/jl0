@@ -165,4 +165,11 @@ end
                          """) == JL0.INT(6)
 end
 
-
+@testset "GC" begin
+    begin
+        state = State()
+        @test count_allocated(state) == 0
+        gc(state)
+        @test count_allocated(state) == 0
+    end
+end

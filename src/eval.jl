@@ -75,18 +75,16 @@ function eval_insn(insn::NEW, state::State)
     s = state.structs[insn.structname]
 
     # allocate a new object and add it to the heap
-    h = length(state.heap) + 1
-    o = Object(Dict{Symbol, Value}())
-    push!(state.heap, o)
+    h = alloc(state, insn.structname)
 
     # pop and store the fields in the struct
     for x in reverse(s.fields)
         v = pop!(frame.stack)
-        o.fields[x] = v
+        putfield(state, h, x, v)
     end
 
     # push the new object's address
-    push!(frame.stack, LOC(h))
+    push!(frame.stack, h)
     state.pc += 1
 end
 
@@ -95,13 +93,9 @@ function eval_insn(insn::GET, state::State)
     h = pop!(frame.stack)
 
     h isa LOC || @error("GET requires a LOC")
-    1 <= h.value <= length(state.heap) || @error("invalid heap location")
+    v = getfield(state, h, insn.field)
 
-    o = state.heap[h.value]
-
-    haskey(o.fields, insn.field) || @error("invalid field")
-
-    push!(frame.stack, o.fields[insn.field])
+    push!(frame.stack, v)
     state.pc += 1
 end
 
@@ -111,10 +105,7 @@ function eval_insn(insn::PUT, state::State)
     h = pop!(frame.stack)
 
     h isa LOC || @error("SET requires a LOC")
-    1 <= h.value <= length(state.heap) || @error("invalid heap location")
-
-    o = state.heap[h.value]
-    o.fields[insn.field] = v
+    putfield(state, h, insn.field, v)
 
     push!(frame.stack, v)
     state.pc += 1
@@ -197,8 +188,8 @@ function eval_insn(insn, state::State)
 end
 
 function eval_insn(insn::LD, frame::Frame)
-    # variables are initialized to 0
-    v = get(frame.vars, insn.name, INT(0))
+    # variables are initialized to null
+    v = get(frame.vars, insn.name, LOC(0))
     push!(frame.stack, v)
 end
 
