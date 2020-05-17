@@ -1,5 +1,5 @@
 using JL0
-using Test: @testset, @test
+using Test: @testset, @test, @test_broken
 
 @testset "Parser" begin
     @test JL0.parse("x") == JL0.Var(:x)
@@ -167,9 +167,30 @@ end
 
 @testset "GC" begin
     begin
-        state = State()
-        @test count_allocated(state) == 0
-        gc(state)
-        @test count_allocated(state) == 0
+        state = JL0.State()
+        @test JL0.count_allocated_objects(state) == 0
+
+        JL0.eval_lines(state, "struct Foo x end")
+
+        @test JL0.count_allocated_objects(state) == 0
+
+        JL0.eval_lines(state, "x = Foo(1)")
+        @test JL0.count_allocated_objects(state) == 1
+
+        JL0.eval_lines(state, "y = Foo(2)")
+        @test JL0.count_allocated_objects(state) == 2
+
+        JL0.gc(state)
+        @test JL0.count_allocated_objects(state) == 2
+
+        JL0.eval_lines(state, "y = nothing")
+
+        JL0.gc(state)
+        @test JL0.count_allocated_objects(state) == 1
+
+        JL0.eval_lines(state, "x = nothing")
+
+        JL0.gc(state)
+        @test JL0.count_allocated_objects(state) == 0
     end
 end

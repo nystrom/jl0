@@ -1,6 +1,11 @@
 # 64 should be enough for anybody
 const INIT_HEAP_SIZE = 64
 
+@enum MarkBit begin
+    Marked
+    Unmarked
+end
+
 """
     struct Frame
 
@@ -15,6 +20,13 @@ Call stack frame
 
     return_address::Int
 end
+
+# A heap value can be any of:
+# Nothing - unallocated
+# Symbol  - a struct tag (shoudl be a key in state.structs)
+# Value   - an INT or LOC
+# MarkBit - Marked or Unmarked
+const HeapValue = Union{Nothing, Symbol, Value, MarkBit}
 
 """
     struct State
@@ -35,7 +47,7 @@ Interpreter state: program counter, operand stack, variables map, and labels map
     frames::Vector{Frame}
 
     # heap (maps from LOC to Value)
-    heap::Vector{Union{Nothing, Symbol, Value}}
+    heap::Vector{HeapValue}
 
     # global function definition store
     funcs::Dict{Symbol, FUNC}
@@ -47,7 +59,7 @@ Interpreter state: program counter, operand stack, variables map, and labels map
         new(1,
             Insn[],
             Dict{Symbol, Int}(),
-            Frame[],
+            Frame[Frame(Value[], Dict{Symbol, Value}(), 0)], # empty frame for the REPL
             fill(nothing, INIT_HEAP_SIZE),
             Dict{Symbol, FUNC}(),
             Dict{Symbol, STRUCT}(),

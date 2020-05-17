@@ -2,18 +2,20 @@ function prompt()
     print("JL0> ")
 end
 
-function eval_lines(lines::String...)
-    eval_lines([lines...])
+function eval_lines(lines::AbstractString...)
+    eval_lines(State(), [lines...])
 end
 
-function eval_lines(lines::Vector{String})
-    result = nothing
+function eval_lines(state::State, lines::AbstractString...)
+    eval_lines(state, [lines...])
+end
 
-    state = State()
- 
-    # Push a frame for the main function. This is the frame for the top-level expression.
-    # We need this frame to keep track of the variables.
-    push!(state.frames, Frame(Value[], Dict{Symbol, Value}(), 0))
+function eval_lines(lines::Vector{T}) where {T <: AbstractString}
+    eval_lines(State(), lines)
+end
+
+function eval_lines(state::State, lines::Vector{T}) where {T <: AbstractString}
+    result = nothing
 
     for line in lines
         line = strip(line)
@@ -25,14 +27,16 @@ function eval_lines(lines::Vector{String})
         e = parse(line)
 
         if e == nothing
-            return nothing
+            result = nothing
         elseif e isa Func
             f = lower(e)
             state.funcs[f.fname] = f
             append_insns!(state, f.body)
+            result = nothing
         elseif e isa Struct
             s = lower(e)
             state.structs[s.name] = s
+            result = nothing
         elseif e isa Exp
             label = gensym()
 
@@ -56,14 +60,10 @@ function eval_lines(lines::Vector{String})
 end
 
 function repl()
-    println("Welcome to JL0. Enter expressionx and watch them get evaluated! Type `:q` to quit.")
+    println("Welcome to JL0. Enter expressions and watch them get evaluated! Type `:q` to quit.")
     prompt()
 
     state = State()
-
-    # Push a frame for the main function. This is the frame for the top-level expression.
-    # We need this frame to keep track of the variables.
-    push!(state.frames, Frame(Value[], Dict{Symbol, Value}(), 0))
 
     while !eof(stdin)
         line = readline()
@@ -79,6 +79,11 @@ function repl()
                 println("$i -> $v")
             end
             prompt()
+            continue
+        end
+
+        if line == ":gc"
+            gc(state)
             continue
         end
 
@@ -103,38 +108,13 @@ function repl()
             continue
         end
 
-        println("read $line")
+        v = eval_lines(state, line)
 
-        e = parse(line)
-        println("parsed $e")
-
-        if e == nothing
-            println("syntax error")
-        elseif e isa Func
-            f = lower(e)
-            state.funcs[f.fname] = f
-            append_insns!(state, f.body)
-        elseif e isa Struct
-            s = lower(e)
-            state.structs[s.name] = s
-        elseif e isa Exp
-            label = gensym()
-
-            insns = Insn[]
-            push!(insns, LABEL(label))
-            append!(insns, lower(e))
-            push!(insns, STOP())
-
-            append_insns!(state, insns)
-
-            println("lowered $(state.insns)")
-
-            # Clear the stack for the next run.
-            current_frame(state).stack = Value[]
-
-            result = eval(label, state)
-
-            println(result)
+        if v isa INT
+            println(v.value)
+        elseif v isa LOC
+            o = state.heap[v.value]
+            println(o)
         end
 
         prompt()

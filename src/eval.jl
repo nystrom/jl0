@@ -1,4 +1,7 @@
 function eval(label::Symbol, state::State; debug=false)::Value
+    # There should be one frame initially.
+    @assert length(state.frames) == 1
+
     state.pc = state.labels[label]
 
     while 1 <= state.pc && state.pc <= length(state.insns)
