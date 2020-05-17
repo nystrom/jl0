@@ -82,46 +82,11 @@ of instructions, a maps for looking up function and struct definitions.
 The heap is implemented in `heap.jl`. This is the only file you need to modify
 for this assignment.
 
-## Bytecode
-
-The abstract machine state consists of:
-
-- a sequence of instructions
-- a program counter: this is the index of the instruction being executed
-- an operand stack: integers and pushed onto the stack and popped to evaluate expressions
-- a dictionary mapping variable names to values
-- a dictionary mapping label names to instruction indices
-
-The following bytecode instructions are supported. See `insns.jl` for details.
-
-- `LDC n` - push a constant on the stack
-- `LD x` - push the local variable on the stack
-- `ST x` - pop the stack and store into the given variable
-- `ADD` - pop two values and push their sum
-- `SUB` - pop two values and push their difference
-- `MUL` - pop two values and push their product
-- `DIV` - pop two values and push the lower divided by the upper
-- `DUP` - duplicate: push the top value again
-- `POP` - pop the top value and discard it
-- `LABEL L` - a jump target label named `L`
-- `JMP L` - jump to label `L`
-- `JEQ L` - pop the stack and jump to `L` if `== 0`
-- `JNE L` - pop the stack and jump to `L` if `!= 0`
-- `JLT L` - pop the stack and jump to `L` if `< 0`
-- `JGT L` - pop the stack and jump to `L` if `> 0`
-- `JLE L` - pop the stack and jump to `L` if `<= 0`
-- `JGE L` - pop the stack and jump to `L` if `>= 0`
-- `PRINT` - print the value on top of the stack
-- `STOP` - stop the program
-- `CALL x` - call the named function, popping the arguments from the stack
-- `RET` - return from the current function, popping the return value
-- `NEW x` - create the named struct, popping the field initializers from the stack
-- `GET x` - load the field `f`, popping the object address from the stack
-- `PUT x` - store the field `f`, popping the value and the object address from the stack
-
 ## Interpreter state
 
+The interpreter is implemented as an abstract machine.
 The interpreter state is defined in `state.jl`.
+
 A `State` consists of:
 
 - a vector of instructions (`insns`),
@@ -156,6 +121,33 @@ good allocation algorithm, but is sufficient for this assignment.
 The `alloc` function takes a struct tag and uses the `structs` dictionary to determine
 how much spaces to allocate for the object.
 The garbage collector (the `gc` function) is called from `alloc` when the heap runs out of space.
+
+The following bytecode instructions are supported. See `insns.jl` for details.
+
+- `LDC n` - push a constant on the stack
+- `LD x` - push the local variable on the stack
+- `ST x` - pop the stack and store into the given variable
+- `ADD` - pop two values and push their sum
+- `SUB` - pop two values and push their difference
+- `MUL` - pop two values and push their product
+- `DIV` - pop two values and push the lower divided by the upper
+- `DUP` - duplicate: push the top value again
+- `POP` - pop the top value and discard it
+- `LABEL L` - a jump target label named `L`
+- `JMP L` - jump to label `L`
+- `JEQ L` - pop the stack and jump to `L` if `== 0`
+- `JNE L` - pop the stack and jump to `L` if `!= 0`
+- `JLT L` - pop the stack and jump to `L` if `< 0`
+- `JGT L` - pop the stack and jump to `L` if `> 0`
+- `JLE L` - pop the stack and jump to `L` if `<= 0`
+- `JGE L` - pop the stack and jump to `L` if `>= 0`
+- `PRINT` - print the value on top of the stack
+- `STOP` - stop the program
+- `CALL x` - call the named function, popping the arguments from the stack
+- `RET` - return from the current function, popping the return value
+- `NEW x` - create the named struct, popping the field initializers from the stack
+- `GET x` - load the field `f`, popping the object address from the stack
+- `PUT x` - store the field `f`, popping the value and the object address from the stack
 
 ## Assignment
 
@@ -234,6 +226,4 @@ Or you can can type `]test` in the Julia REPL.
 To help you debug, you can use the REPL to define functions and structs.
 The command `:heap` will dump the current heap. The command `:gc` will run the garbage
 collector manually.
-
-
 
