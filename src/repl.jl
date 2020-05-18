@@ -113,6 +113,8 @@ function repl()
 
         if v isa INT
             println(v.value)
+        elseif v == LOC(0)
+            println("nothing")
         elseif v isa LOC
             o = state.heap[v.value]
             println(o)

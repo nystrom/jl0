@@ -256,6 +256,8 @@ function eval_insn(insn::PRINT, frame::Frame)
     v = pop!(frame.stack)
     if v isa INT
         println(v.value)
+    elseif v == LOC(0)
+        println("nothing")
     elseif v isa LOC
         o = state.heap[v.value]
         println(o)
