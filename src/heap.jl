@@ -146,6 +146,10 @@ function getfield(state::State, h::LOC, x::Symbol)
     i = findfirst(==(x), s.fields)
     i != nothing || @error("field $x not found")
 
+    ################################################################
+    # TODO: this code needs to be modified to account for the MarkBit
+    ################################################################
+
     p = h.value + i
     1 <= p <= length(state.heap) || @error("invalid heap location")
 
@@ -163,6 +167,10 @@ function putfield(state::State, h::LOC, x::Symbol, v::Value)
 
     i = findfirst(==(x), s.fields)
     i != nothing || @error("field $x not found")
+
+    ################################################################
+    # TODO: this code needs to be modified to account for the MarkBit
+    ################################################################
 
     p = h.value + i
     1 <= p <= length(state.heap) || @error("invalid heap location")

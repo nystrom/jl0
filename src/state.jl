@@ -23,7 +23,7 @@ end
 
 # A heap value can be any of:
 # Nothing - unallocated
-# Symbol  - a struct tag (shoudl be a key in state.structs)
+# Symbol  - a struct tag (should be a key in state.structs)
 # Value   - an INT or LOC
 # MarkBit - Marked or Unmarked
 const HeapValue = Union{Nothing, Symbol, Value, MarkBit}

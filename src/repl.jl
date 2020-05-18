@@ -84,6 +84,7 @@ function repl()
 
         if line == ":gc"
             gc(state)
+            prompt()
             continue
         end
 
