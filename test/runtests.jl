@@ -1,5 +1,33 @@
 using JL0
 using Test: @testset, @test, @test_broken
+using Base: ==
+
+function equiv(insns1::Vector{JL0.Insn}, insns2::Vector{JL0.Insn}, renaming::Dict{Symbol,Symbol})
+    if length(insns1) != length(insns2)
+        return false
+    end
+    for (i, j) in zip(insns1, insns2)
+        if ! equiv(i, j, renaming)
+            return false
+        end
+    end
+    return true
+end
+
+function equiv(insn1::JL0.Insn, insn2::JL0.Insn, renaming::Dict{Symbol,Symbol})
+    return insn1 == insn2
+end
+
+function rename(insn1::T, insn2::T, renaming::Dict{Symbol,Symbol}) where {
+    T <: Union{JL0.LABEL,JL0.JMP,JL0.JLT,JL0.JGT,JL0.JEQ,JL0.JNE,JL0.JGE,JL0.JLE}
+}
+    if haskey(renaming, insn1.label)
+        return insn2.label == getindex(renaming, insn1.label)
+    else
+        setindex(renaming, insn2.label, insn1.label)
+        return true
+    end
+end
 
 @testset "Parser" begin
     @test JL0.parse("x") == JL0.Var(:x)
@@ -101,26 +129,32 @@ end
 
     begin
         local e = JL0.parse("x < y ? x : y")
-        @test JL0.lower(e) == JL0.Insn[JL0.LD(:x), JL0.LD(:y), JL0.SUB(),
-                                       JL0.JGE(Symbol("##Lfalse#253")),
-                                       JL0.LD(:x),
-                                       JL0.JMP(Symbol("##Ljoin#254")),
-                                       JL0.LABEL(Symbol("##Lfalse#253")),
-                                       JL0.LD(:y),
-                                       JL0.LABEL(Symbol("##Ljoin#254"))]
+        @test equiv(
+                JL0.lower(e), 
+                JL0.Insn[JL0.LD(:x), JL0.LD(:y), JL0.SUB(),
+                         JL0.JGE(Symbol("##Lfalse#253")),
+                         JL0.LD(:x),
+                         JL0.JMP(Symbol("##Ljoin#254")),
+                         JL0.LABEL(Symbol("##Lfalse#253")),
+                         JL0.LD(:y),
+                         JL0.LABEL(Symbol("##Ljoin#254"))],
+                Dict{Symbol,Symbol}())
     end
 
     begin
         local e = JL0.parse("while x < y ; x = x + 1; end")
-        @test JL0.lower(e) == JL0.Insn[JL0.LDC(0),
-                                       JL0.JMP(Symbol("##Lbot#255")),
-                                       JL0.LABEL(Symbol("##Ltop#256")),
-                                       JL0.LDC(1), JL0.ADD(),
-                                       JL0.LD(:x), JL0.LDC(1), JL0.ADD(), JL0.DUP(), JL0.ST(:x),
-                                       JL0.POP(),
-                                       JL0.LABEL(Symbol("##Lbot#255")),
-                                       JL0.LD(:x), JL0.LD(:y), JL0.SUB(),
-                                       JL0.JLT(Symbol("##Ltop#256"))]
+        @test equiv(
+                JL0.lower(e),
+                JL0.Insn[JL0.LDC(0),
+                         JL0.JMP(Symbol("##Lbot#255")),
+                         JL0.LABEL(Symbol("##Ltop#256")),
+                         JL0.LDC(1), JL0.ADD(),
+                         JL0.LD(:x), JL0.LDC(1), JL0.ADD(), JL0.DUP(), JL0.ST(:x),
+                         JL0.POP(),
+                         JL0.LABEL(Symbol("##Lbot#255")),
+                         JL0.LD(:x), JL0.LD(:y), JL0.SUB(),
+                         JL0.JLT(Symbol("##Ltop#256"))],
+                Dict{Symbol,Symbol}())
     end
 end
 
